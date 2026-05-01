@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Memory Jar ✨</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #08070f;
+      --bg2: #0f0d1e;
+      --card: rgba(255,255,255,0.04);
+      --border: rgba(255,255,255,0.08);
+      --purple: #9b7fe8;
+      --pink: #e87fa3;
+      --gold: #e8c87f;
+      --text: #e8e4f0;
+      --muted: #6b6580;
+      --danger: #e87f7f;
+      --success: #7fe8a0;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      font-family: 'DM Sans', sans-serif;
+      color: var(--text);
+      overflow-x: hidden;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        radial-gradient(1px 1px at 15% 25%, rgba(255,255,255,0.35) 0%, transparent 100%),
+        radial-gradient(1px 1px at 75% 12%, rgba(255,255,255,0.25) 0%, transparent 100%),
+        radial-gradient(1px 1px at 55% 68%, rgba(255,255,255,0.2) 0%, transparent 100%),
+        radial-gradient(1px 1px at 8% 78%, rgba(255,255,255,0.3) 0%, transparent 100%),
+        radial-gradient(1px 1px at 92% 55%, rgba(255,255,255,0.2) 0%, transparent 100%),
+        radial-gradient(1px 1px at 38% 88%, rgba(255,255,255,0.25) 0%, transparent 100%),
+        radial-gradient(1px 1px at 68% 38%, rgba(255,255,255,0.15) 0%, transparent 100%),
+        radial-gradient(1px 1px at 50% 18%, rgba(255,255,255,0.22) 0%, transparent 100%),
+        radial-gradient(1px 1px at 82% 82%, rgba(255,255,255,0.18) 0%, transparent 100%);
+      pointer-events: none; z-index: 0;
+    }
+    .screen { display: none; min-height: 100vh; position: relative; z-index: 1; }
+    .screen.active { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
+
+    /* AUTH */
+    #auth-screen { background: radial-gradient(ellipse at 50% 35%, #1a1040 0%, var(--bg) 68%); }
+    .jar-float { font-size: 64px; animation: float 4s ease-in-out infinite; display: block; text-align: center; margin-bottom: 16px; }
+    @keyframes float { 0%,100%{transform:translateY(0) rotate(-2deg)} 50%{transform:translateY(-12px) rotate(2deg)} }
+    .app-title {
+      font-family: 'Playfair Display', serif; font-size: 2.8rem; font-weight: 700;
+      text-align: center;
+      background: linear-gradient(135deg, var(--purple), var(--pink), var(--gold));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      margin-bottom: 6px;
+    }
+    .app-tagline { color: var(--muted); font-style: italic; text-align: center; margin-bottom: 36px; font-family: 'Playfair Display', serif; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 32px; width: 100%; max-width: 400px; backdrop-filter: blur(12px); }
+    .card-title { font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 24px; }
+    .auth-tabs { display: flex; background: rgba(255,255,255,0.04); border-radius: 10px; padding: 4px; margin-bottom: 24px; }
+    .auth-tab { flex: 1; padding: 9px; text-align: center; border-radius: 7px; cursor: pointer; font-size: 0.88rem; font-weight: 500; color: var(--muted); border: none; background: none; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+    .auth-tab.active { background: linear-gradient(135deg, var(--purple), var(--pink)); color: white; }
+    .auth-form { display: none; }
+    .auth-form.active { display: block; }
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-size: 0.75rem; color: var(--muted); margin-bottom: 5px; letter-spacing: 0.05em; text-transform: uppercase; }
+    input, textarea { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 10px; padding: 11px 14px; font-family: 'DM Sans', sans-serif; font-size: 0.93rem; color: var(--text); outline: none; transition: border-color 0.2s; }
+    input::placeholder, textarea::placeholder { color: var(--muted); }
+    input:focus, textarea:focus { border-color: var(--purple); }
+    textarea { min-height: 88px; resize: vertical; }
+    .auth-msg { font-size: 0.82rem; margin-bottom: 12px; display: none; padding: 8px 12px; background: rgba(232,127,127,0.08); border-radius: 8px; border: 1px solid rgba(232,127,127,0.2); }
+    .auth-msg.show { display: block; }
+    .btn { display: block; width: 100%; padding: 12px 20px; border: none; border-radius: 50px; font-family: 'DM Sans', sans-serif; font-size: 0.93rem; font-weight: 500; cursor: pointer; text-align: center; transition: transform 0.15s, opacity 0.15s; margin-bottom: 8px; }
+    .btn:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn:active { transform: translateY(1px); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-primary { background: linear-gradient(135deg, var(--purple), var(--pink)); color: white; box-shadow: 0 4px 18px rgba(155,127,232,0.3); }
+    .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+    .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+    .btn-danger { background: rgba(232,127,127,0.12); border: 1px solid rgba(232,127,127,0.25); color: var(--danger); }
+
+    /* HOME */
+    #home-screen { background: radial-gradient(ellipse at 50% 15%, #150e30 0%, var(--bg) 60%); justify-content: flex-start; padding: 0; }
+    .home-header { width: 100%; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.3); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 10; }
+    .home-logo { font-family: 'Playfair Display', serif; font-size: 1.2rem; background: linear-gradient(135deg, var(--purple), var(--pink)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .user-menu { display: flex; align-items: center; gap: 8px; }
+    .user-pill { background: var(--card); border: 1px solid var(--border); border-radius: 50px; padding: 6px 14px; font-size: 0.8rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+    .logout-btn { background: none; border: 1px solid var(--border); border-radius: 50px; padding: 6px 12px; color: var(--muted); font-size: 0.78rem; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: color 0.2s, border-color 0.2s; }
+    .logout-btn:hover { color: var(--danger); border-color: var(--danger); }
+    .home-body { width: 100%; max-width: 520px; padding: 24px 20px; align-self: center; }
+    .search-bar { position: relative; margin-bottom: 28px; }
+    .search-bar input { padding-left: 38px; border-radius: 50px; }
+    .search-icon { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+    .search-results { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; margin-top: -20px; margin-bottom: 16px; display: none; }
+    .sr-item { padding: 12px 16px; cursor: pointer; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; transition: background 0.15s; }
+    .sr-item:last-child { border-bottom: none; }
+    .sr-item:hover { background: rgba(255,255,255,0.04); }
+    .sr-name { font-size: 0.88rem; }
+    .sr-meta { font-size: 0.72rem; color: var(--muted); }
+    .section-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 12px; }
+    .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 28px; }
+    .action-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 18px; cursor: pointer; transition: border-color 0.2s, transform 0.15s; text-align: center; }
+    .action-card:hover { border-color: var(--purple); transform: translateY(-2px); }
+    .ac-icon { font-size: 1.6rem; margin-bottom: 6px; }
+    .ac-label { font-size: 0.84rem; font-weight: 500; }
+    .ac-sub { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+    .my-jars-list { display: flex; flex-direction: column; gap: 8px; }
+    .jar-item { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: border-color 0.2s; }
+    .jar-item:hover { border-color: var(--purple); }
+    .ji-info { flex: 1; }
+    .ji-name { font-size: 0.88rem; font-weight: 500; }
+    .ji-meta { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+    .empty-state { text-align: center; padding: 28px; color: var(--muted); font-size: 0.85rem; font-style: italic; }
+
+    /* CREATE/JOIN */
+    #create-screen, #join-screen { background: radial-gradient(ellipse at 50% 35%, #150e30 0%, var(--bg) 68%); }
+
+    /* SKY */
+    #sky-screen { background: radial-gradient(ellipse at 50% 20%, #0d0820 0%, #020208 100%); justify-content: flex-start; padding: 0; }
+    .sky-header { width: 100%; padding: 14px 18px; display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.45); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
+    .back-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1.1rem; padding: 4px; transition: color 0.2s; }
+    .back-btn:hover { color: var(--text); }
+    .sky-name { font-family: 'Playfair Display', serif; font-size: 1.15rem; flex: 1; background: linear-gradient(135deg, var(--purple), var(--pink)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .sky-count { font-size: 0.7rem; color: var(--muted); background: var(--card); border: 1px solid var(--border); border-radius: 50px; padding: 3px 10px; }
+    .edit-icon-btn { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 5px 9px; color: var(--muted); cursor: pointer; font-size: 0.82rem; transition: color 0.2s, border-color 0.2s; display: none; }
+    .edit-icon-btn:hover { color: var(--text); border-color: var(--purple); }
+    .sky-canvas { position: relative; width: 100%; flex: 1; min-height: 75vh; }
+    .star-dot { position: absolute; cursor: pointer; transition: transform 0.2s; text-align: center; }
+    .star-dot:hover { transform: scale(1.5); }
+    .star-glyph { display: block; font-size: 1.5rem; filter: drop-shadow(0 0 10px rgba(155,127,232,0.9)); animation: twinkle var(--td, 3s) ease-in-out infinite; animation-delay: var(--dl, 0s); }
+    @keyframes twinkle { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.55;transform:scale(0.82)} }
+    .star-label { font-size: 0.58rem; color: var(--muted); margin-top: 2px; max-width: 64px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .empty-sky { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; color: var(--muted); }
+    .empty-sky p { font-size: 0.88rem; margin-top: 8px; }
+    .fab { position: fixed; bottom: 24px; right: 24px; background: linear-gradient(135deg, var(--purple), var(--pink)); color: white; border: none; border-radius: 50px; padding: 13px 22px; font-family: 'DM Sans', sans-serif; font-size: 0.88rem; font-weight: 500; cursor: pointer; box-shadow: 0 6px 24px rgba(155,127,232,0.42); z-index: 50; transition: transform 0.2s; }
+    .fab:hover { transform: scale(1.05); }
+    .share-pill { position: fixed; bottom: 24px; left: 24px; background: var(--card); border: 1px solid var(--border); border-radius: 50px; padding: 10px 16px; font-size: 0.78rem; color: var(--muted); cursor: pointer; z-index: 50; transition: background 0.2s, color 0.2s; }
+    .share-pill:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+
+    /* EDIT SCREEN */
+    #edit-screen { background: radial-gradient(ellipse at 50% 15%, #150e30 0%, var(--bg) 60%); justify-content: flex-start; padding: 0; }
+    .edit-header { width: 100%; padding: 14px 18px; display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.35); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+    .edit-title { font-family: 'Playfair Display', serif; font-size: 1.15rem; flex: 1; }
+    .edit-body { width: 100%; max-width: 520px; padding: 24px 20px; align-self: center; }
+    .mem-item { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: flex-start; gap: 10px; }
+    .mem-body { flex: 1; }
+    .mem-author { font-size: 0.72rem; color: var(--purple); margin-bottom: 3px; }
+    .mem-text { font-size: 0.83rem; line-height: 1.55; }
+    .mem-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 0.9rem; padding: 2px; transition: color 0.2s; flex-shrink: 0; }
+    .mem-del:hover { color: var(--danger); }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 22px 0; }
+
+    /* MODALS */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.78); backdrop-filter: blur(6px); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: #12102a; border: 1px solid rgba(155,127,232,0.22); border-radius: 20px; padding: 26px; max-width: 390px; width: 100%; position: relative; animation: popIn 0.22s cubic-bezier(.17,.67,.35,1.4); max-height: 88vh; overflow-y: auto; }
+    @keyframes popIn { from{transform:scale(0.85);opacity:0} to{transform:scale(1);opacity:1} }
+    .modal-x { position: absolute; top: 14px; right: 14px; background: none; border: none; color: var(--muted); font-size: 1.3rem; cursor: pointer; line-height: 1; }
+    .modal-x:hover { color: var(--text); }
+    .modal-title { font-family: 'Playfair Display', serif; font-size: 1.25rem; margin-bottom: 18px; padding-right: 22px; }
+    .view-photo { width: 100%; border-radius: 10px; margin-bottom: 12px; max-height: 230px; object-fit: cover; }
+    .view-author { font-size: 0.78rem; color: var(--purple); margin-bottom: 6px; }
+    .view-memory { font-size: 0.93rem; line-height: 1.7; margin-bottom: 10px; }
+    .view-date { font-size: 0.7rem; color: var(--muted); }
+
+    /* TOAST */
+    .toast { position: fixed; bottom: 72px; left: 50%; transform: translateX(-50%); background: #1e1b3a; border: 1px solid var(--purple); color: var(--text); padding: 9px 18px; border-radius: 50px; font-size: 0.83rem; z-index: 200; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap; }
+    .toast.show { opacity: 1; }
+
+    .loading-screen { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 999; transition: opacity 0.4s; }
+    .loading-screen.hide { opacity: 0; pointer-events: none; }
+  </style>
+</head>
+<body>
+
+<div class="loading-screen" id="loading-screen">
+  <span style="font-size:2.5rem;animation:float 2s ease-in-out infinite">🫙</span>
+</div>
+
+<!-- AUTH -->
+<div class="screen" id="auth-screen">
+  <span class="jar-float">🫙</span>
+  <h1 class="app-title">Memory Jar</h1>
+  <p class="app-tagline">a little universe for your favourite people</p>
+  <div class="card">
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchTab('login')">Sign in</button>
+      <button class="auth-tab" onclick="switchTab('signup')">Create account</button>
+    </div>
+    <div class="auth-form active" id="login-form">
+      <div class="auth-msg" id="login-msg"></div>
+      <div class="field"><label>Email</label><input type="email" id="login-email" placeholder="you@email.com" /></div>
+      <div class="field"><label>Password</label><input type="password" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()" /></div>
+      <button class="btn btn-primary" id="login-btn" onclick="login()">Sign in ✨</button>
+    </div>
+    <div class="auth-form" id="signup-form">
+      <div class="auth-msg" id="signup-msg"></div>
+      <div class="field"><label>Your name</label><input type="text" id="signup-name" placeholder="e.g. Rushmi" maxlength="30" /></div>
+      <div class="field"><label>Email</label><input type="email" id="signup-email" placeholder="you@email.com" /></div>
+      <div class="field"><label>Password</label><input type="password" id="signup-password" placeholder="min 6 characters" onkeydown="if(event.key==='Enter')signup()" /></div>
+      <button class="btn btn-primary" id="signup-btn" onclick="signup()">Create account 🌟</button>
+    </div>
+  </div>
+</div>
+
+<!-- HOME -->
+<div class="screen" id="home-screen">
+  <div class="home-header">
+    <span class="home-logo">🫙 Memory Jar</span>
+    <div class="user-menu">
+      <div class="user-pill">👤 <span id="user-name-display">you</span></div>
+      <button class="logout-btn" onclick="logout()">Sign out</button>
+    </div>
+  </div>
+  <div class="home-body">
+    <div class="search-bar">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="search-input" placeholder="Search for a jar by name..." oninput="searchJars()" />
+    </div>
+    <div class="search-results" id="search-results"></div>
+    <p class="section-label">Start something new</p>
+    <div class="action-row">
+      <div class="action-card" onclick="showScreen('create-screen')">
+        <div class="ac-icon">✨</div>
+        <div class="ac-label">New jar</div>
+        <div class="ac-sub">Create & share</div>
+      </div>
+      <div class="action-card" onclick="showScreen('join-screen')">
+        <div class="ac-icon">🔗</div>
+        <div class="ac-label">Open by code</div>
+        <div class="ac-sub">Enter a jar code</div>
+      </div>
+    </div>
+    <p class="section-label">My jars</p>
+    <div class="my-jars-list" id="my-jars-list">
+      <div class="empty-state">Loading your jars...</div>
+    </div>
+  </div>
+</div>
+
+<!-- CREATE -->
+<div class="screen" id="create-screen">
+  <div class="card">
+    <h2 class="card-title">🫙 Create a jar</h2>
+    <div class="field"><label>What's this jar for?</label><input type="text" id="jar-name" placeholder="e.g. The Uni Gang, Summer 2025..." maxlength="50" onkeydown="if(event.key==='Enter')createJar()" /></div>
+    <button class="btn btn-primary" onclick="createJar()">Create jar 🌟</button>
+    <button class="btn btn-ghost" onclick="showScreen('home-screen')">← Back</button>
+  </div>
+</div>
+
+<!-- JOIN -->
+<div class="screen" id="join-screen">
+  <div class="card">
+    <h2 class="card-title">🔗 Open by code</h2>
+    <div class="field"><label>Jar code</label><input type="text" id="jar-code-input" placeholder="Paste the jar code here..." maxlength="20" onkeydown="if(event.key==='Enter')openJarByCode()" /></div>
+    <button class="btn btn-primary" onclick="openJarByCode()">Open jar ✨</button>
+    <button class="btn btn-ghost" onclick="showScreen('home-screen')">← Back</button>
+  </div>
+</div>
+
+<!-- SKY -->
+<div class="screen" id="sky-screen">
+  <div class="sky-header">
+    <button class="back-btn" onclick="showScreen('home-screen')">←</button>
+    <span class="sky-name" id="sky-title"></span>
+    <span class="sky-count" id="sky-count"></span>
+    <button class="edit-icon-btn" id="edit-btn" onclick="goToEdit()">✏️ Edit</button>
+  </div>
+  <div class="sky-canvas" id="sky-canvas">
+    <div class="empty-sky" id="empty-sky">
+      <div style="font-size:2.4rem">🌌</div>
+      <p>No memories yet.<br>Be the first to add one!</p>
+    </div>
+  </div>
+  <button class="fab" onclick="showAddMemory()">+ Add memory</button>
+  <button class="share-pill" onclick="copyJarLink()">🔗 Share jar</button>
+</div>
+
+<!-- EDIT -->
+<div class="screen" id="edit-screen">
+  <div class="edit-header">
+    <button class="back-btn" onclick="goBackToSky()">←</button>
+    <span class="edit-title" id="edit-screen-title">Edit jar</span>
+  </div>
+  <div class="edit-body">
+    <p class="section-label">Rename jar</p>
+    <div class="field"><input type="text" id="rename-input" placeholder="New jar name..." maxlength="50" /></div>
+    <button class="btn btn-primary" onclick="renameJar()" style="margin-bottom:22px">Save name</button>
+    <hr class="divider">
+    <p class="section-label" style="margin-bottom:14px">Memories</p>
+    <div id="edit-memories-list"></div>
+    <hr class="divider">
+    <button class="btn btn-danger" onclick="confirmDeleteJar()">🗑 Delete entire jar</button>
+  </div>
+</div>
+
+<!-- ADD MEMORY MODAL -->
+<div class="modal-overlay" id="add-modal">
+  <div class="modal">
+    <button class="modal-x" onclick="closeModal('add-modal')">×</button>
+    <h2 class="modal-title">Add a memory ✨</h2>
+    <div class="field"><label>Your name</label><input type="text" id="memory-author" placeholder="e.g. Rushmi" maxlength="30" /></div>
+    <div class="field"><label>The memory</label><textarea id="memory-text" placeholder="Write a memory you want to keep forever..."></textarea></div>
+    <div class="field"><label>Photo URL (optional)</label><input type="text" id="memory-photo" placeholder="https://..." /></div>
+    <button class="btn btn-primary" onclick="addMemory()">Drop it in the jar 🌟</button>
+  </div>
+</div>
+
+<!-- VIEW MEMORY MODAL -->
+<div class="modal-overlay" id="view-modal">
+  <div class="modal">
+    <button class="modal-x" onclick="closeModal('view-modal')">×</button>
+    <img id="view-photo" class="view-photo" style="display:none" />
+    <div class="view-author" id="view-author"></div>
+    <div class="view-memory" id="view-memory"></div>
+    <div class="view-date" id="view-date"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+ const SUPABASE_URL = "https://ilyqbxvmzxftacjyhvcv.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlseXFieHZtenhmdGFjanlodmN2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2MzM3NDksImV4cCI6MjA5MzIwOTc0OX0.3gdpUStK4XleyLMJwCOUBu9P-Er7WlNEjTn7l1M-3Ok";
+
+  let currentUser = null;
+  let currentJarId = null;
+  let currentJarName = null;
+  let searchTimeout = null;
+
+  // ---- SUPABASE REST ----
+  async function sbFetch(path, opts = {}) {
+    const token = currentUser?.access_token || SUPABASE_KEY;
+    const res = await fetch(`${SUPABASE_URL}${path}`, {
+      ...opts,
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+        ...opts.headers
+      }
+    });
+    if (res.status === 204 || res.status === 200 && res.headers.get('content-length') === '0') return null;
+    try { return await res.json(); } catch { return null; }
+  }
+
+  const sbGet = (t, q = "") => sbFetch(`/rest/v1/${t}?${q}`);
+  const sbPost = (t, d) => sbFetch(`/rest/v1/${t}`, { method:"POST", headers:{"Prefer":"return=representation"}, body:JSON.stringify(d) });
+  const sbPatch = (t, q, d) => sbFetch(`/rest/v1/${t}?${q}`, { method:"PATCH", headers:{"Prefer":"return=representation"}, body:JSON.stringify(d) });
+  const sbDelete = (t, q) => sbFetch(`/rest/v1/${t}?${q}`, { method:"DELETE" });
+
+  // ---- AUTH ----
+  async function authReq(path, body) {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1${path}`, {
+      method: "POST",
+      headers: { "apikey": SUPABASE_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    return res.json();
+  }
+
+  function showMsg(form, msg, isSuccess = false) {
+    const el = document.getElementById(`${form}-msg`);
+    el.textContent = msg;
+    el.style.color = isSuccess ? 'var(--success)' : 'var(--danger)';
+    el.style.borderColor = isSuccess ? 'rgba(127,232,160,0.2)' : 'rgba(232,127,127,0.2)';
+    el.style.background = isSuccess ? 'rgba(127,232,160,0.08)' : 'rgba(232,127,127,0.08)';
+    el.classList.add('show');
+  }
+
+  function switchTab(tab) {
+    document.querySelectorAll('.auth-tab').forEach((t, i) => t.classList.toggle('active', (tab==='login'&&i===0)||(tab==='signup'&&i===1)));
+    document.getElementById('login-form').classList.toggle('active', tab==='login');
+    document.getElementById('signup-form').classList.toggle('active', tab==='signup');
+    document.getElementById('login-msg').classList.remove('show');
+    document.getElementById('signup-msg').classList.remove('show');
+  }
+
+  async function signup() {
+    const name = document.getElementById('signup-name').value.trim();
+    const email = document.getElementById('signup-email').value.trim();
+    const password = document.getElementById('signup-password').value;
+    if (!name||!email||!password) { showMsg('signup','Please fill in all fields.'); return; }
+    if (password.length < 6) { showMsg('signup','Password must be at least 6 characters.'); return; }
+
+    const btn = document.getElementById('signup-btn');
+    btn.disabled = true; btn.textContent = 'Creating account...';
+
+    const data = await authReq('/signup', { email, password, data: { name } });
+    btn.disabled = false; btn.textContent = 'Create account 🌟';
+
+    if (data.error) { showMsg('signup', data.error.message || data.msg || 'Something went wrong.'); return; }
+
+    if (data.user && !data.session) {
+      showMsg('signup', '✉️ Check your email to confirm your account, then sign in!', true);
+      return;
+    }
+    if (data.session) {
+      setSession(data, name);
+      initHome();
+    }
+  }
+
+  async function login() {
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    if (!email||!password) { showMsg('login','Please fill in both fields.'); return; }
+
+    const btn = document.getElementById('login-btn');
+    btn.disabled = true; btn.textContent = 'Signing in...';
+
+    const data = await authReq('/token?grant_type=password', { email, password });
+    btn.disabled = false; btn.textContent = 'Sign in ✨';
+
+    if (data.error||data.error_description) { showMsg('login', data.error_description||data.error||'Invalid email or password.'); return; }
+
+    const name = data.user?.user_metadata?.name || email.split('@')[0];
+    setSession(data, name);
+    initHome();
+  }
+
+  async function logout() {
+    await sbFetch('/auth/v1/logout', { method:"POST" });
+    localStorage.removeItem('mj_session');
+    currentUser = null;
+    showScreen('auth-screen');
+  }
+
+  function setSession(data, name) {
+    const session = { access_token: data.access_token, refresh_token: data.refresh_token, name };
+    localStorage.setItem('mj_session', JSON.stringify(session));
+    currentUser = { ...data.user, access_token: data.access_token, name };
+  }
+
+  // ---- NAV ----
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+  // ---- HOME ----
+  function initHome() {
+    document.getElementById('user-name-display').textContent = currentUser?.name || 'you';
+    showScreen('home-screen');
+    loadMyJars();
+    const params = new URLSearchParams(window.location.search);
+    const jarId = params.get('jar');
+    if (jarId) openJar(jarId);
+  }
+
+  async function loadMyJars() {
+    const list = document.getElementById('my-jars-list');
+    list.innerHTML = '<div class="empty-state">Loading...</div>';
+    const jars = await sbGet('jars', `user_id=eq.${currentUser.id}&order=created_at.desc`);
+    if (!jars||!jars.length) { list.innerHTML = '<div class="empty-state">No jars yet — create one above! 🫙</div>'; return; }
+    list.innerHTML = jars.map(j => `
+      <div class="jar-item" onclick="openJar('${j.id}')">
+        <span style="font-size:1.3rem">🫙</span>
+        <div class="ji-info">
+          <div class="ji-name">${j.name}</div>
+          <div class="ji-meta">Code: ${j.id}</div>
+        </div>
+        <span style="color:var(--muted)">→</span>
+      </div>
+    `).join('');
+  }
+
+  // ---- SEARCH ----
+  async function searchJars() {
+    const q = document.getElementById('search-input').value.trim();
+    const el = document.getElementById('search-results');
+    if (!q) { el.style.display='none'; return; }
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(async () => {
+      const jars = await sbGet('jars', `name=ilike.*${encodeURIComponent(q)}*&limit=6`);
+      el.style.display = 'block';
+      if (!jars||!jars.length) { el.innerHTML='<div class="sr-item"><span class="sr-name" style="color:var(--muted)">No jars found</span></div>'; return; }
+      el.innerHTML = jars.map(j => `
+        <div class="sr-item" onclick="openJar('${j.id}');document.getElementById('search-input').value='';document.getElementById('search-results').style.display='none'">
+          <span>🫙</span>
+          <div><div class="sr-name">${j.name}</div><div class="sr-meta">Code: ${j.id}</div></div>
+        </div>
+      `).join('');
+    }, 300);
+  }
+
+  // ---- CREATE JAR ----
+  async function createJar() {
+    const name = document.getElementById('jar-name').value.trim();
+    if (!name) { showToast("Give your jar a name! 💕"); return; }
+    const id = Math.random().toString(36).substring(2,8).toUpperCase();
+    await sbPost('jars', { id, name, user_id: currentUser.id });
+    document.getElementById('jar-name').value = '';
+    currentJarId = id; currentJarName = name;
+    history.pushState({}, '', `?jar=${id}`);
+    await loadSky(id, name);
+    showToast(`Jar created! Code: ${id} 🫙`);
+    loadMyJars();
+  }
+
+  // ---- OPEN BY CODE ----
+  async function openJarByCode() {
+    const code = document.getElementById('jar-code-input').value.trim().toUpperCase();
+    if (!code) { showToast("Paste a jar code first!"); return; }
+    await openJar(code);
+  }
+
+  // ---- OPEN JAR ----
+  async function openJar(id) {
+    const jars = await sbGet('jars', `id=eq.${id}`);
+    if (!jars||!jars.length) { showToast("Jar not found 😢 Check the code!"); return; }
+    currentJarId = id; currentJarName = jars[0].name;
+    history.pushState({}, '', `?jar=${id}`);
+    const isOwner = jars[0].user_id === currentUser?.id;
+    document.getElementById('edit-btn').style.display = isOwner ? 'block' : 'none';
+    await loadSky(id, jars[0].name);
+  }
+
+  // ---- SKY ----
+  async function loadSky(jarId, jarName) {
+    document.getElementById('sky-title').textContent = jarName;
+    document.getElementById('sky-count').textContent = '';
+    showScreen('sky-screen');
+    const memories = await sbGet('memories', `jar_id=eq.${jarId}&order=created_at.asc`);
+    renderStars(memories||[]);
+  }
+
+  function renderStars(memories) {
+    const canvas = document.getElementById('sky-canvas');
+    const empty = document.getElementById('empty-sky');
+    canvas.querySelectorAll('.star-dot').forEach(s => s.remove());
+    if (!memories.length) { empty.style.display='block'; document.getElementById('sky-count').textContent=''; return; }
+    empty.style.display = 'none';
+    document.getElementById('sky-count').textContent = `${memories.length} ✦`;
+    const glyphs = ['⭐','🌟','✨','💫','🌠','💜','🩵','🌸','⚡','🔮'];
+    memories.forEach((m, i) => {
+      const el = document.createElement('div');
+      el.className = 'star-dot';
+      el.style.left = (5+Math.random()*82)+'%';
+      el.style.top = (5+Math.random()*82)+'%';
+      el.style.setProperty('--td',(2.5+Math.random()*2)+'s');
+      el.style.setProperty('--dl',(Math.random()*2)+'s');
+      el.innerHTML = `<span class="star-glyph">${glyphs[i%glyphs.length]}</span><span class="star-label">${m.author||'anonymous'}</span>`;
+      el.onclick = () => viewMemory(m);
+      canvas.appendChild(el);
+    });
+  }
+
+  function viewMemory(m) {
+    const photo = document.getElementById('view-photo');
+    if (m.photo_url) { photo.src=m.photo_url; photo.style.display='block'; } else { photo.style.display='none'; }
+    document.getElementById('view-author').textContent = `✨ ${m.author||'Someone special'}`;
+    document.getElementById('view-memory').textContent = m.memory;
+    document.getElementById('view-date').textContent = new Date(m.created_at).toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+    document.getElementById('view-modal').classList.add('open');
+  }
+
+  function showAddMemory() {
+    document.getElementById('memory-author').value = currentUser?.name||'';
+    document.getElementById('add-modal').classList.add('open');
+  }
+
+  async function addMemory() {
+    const author = document.getElementById('memory-author').value.trim();
+    const memory = document.getElementById('memory-text').value.trim();
+    const photo_url = document.getElementById('memory-photo').value.trim();
+    if (!memory) { showToast("Write a memory first! 💕"); return; }
+    await sbPost('memories', { jar_id:currentJarId, author:author||'Anonymous', memory, photo_url:photo_url||null });
+    closeModal('add-modal');
+    document.getElementById('memory-text').value='';
+    document.getElementById('memory-photo').value='';
+    const memories = await sbGet('memories', `jar_id=eq.${currentJarId}&order=created_at.asc`);
+    renderStars(memories||[]);
+    showToast("Memory added to the jar 🌟");
+  }
+
+  function copyJarLink() { navigator.clipboard.writeText(window.location.href); showToast("Link copied! Share it with your friends 🫙"); }
+
+  async function goToEdit() {
+    document.getElementById('edit-screen-title').textContent = currentJarName;
+    document.getElementById('rename-input').value = currentJarName;
+    const memories = await sbGet('memories', `jar_id=eq.${currentJarId}&order=created_at.asc`);
+    const list = document.getElementById('edit-memories-list');
+    if (!memories||!memories.length) { list.innerHTML='<div class="empty-state">No memories yet.</div>'; }
+    else { list.innerHTML = memories.map(m => `
+      <div class="mem-item" id="mem-${m.id}">
+        <div class="mem-body">
+          <div class="mem-author">✨ ${m.author||'Anonymous'}</div>
+          <div class="mem-text">${m.memory}</div>
+        </div>
+        <button class="mem-del" onclick="deleteMemory('${m.id}')">🗑</button>
+      </div>
+    `).join(''); }
+    showScreen('edit-screen');
+  }
+
+  function goBackToSky() { loadSky(currentJarId, currentJarName); }
+
+  async function renameJar() {
+    const newName = document.getElementById('rename-input').value.trim();
+    if (!newName) { showToast("Enter a name first!"); return; }
+    await sbPatch('jars', `id=eq.${currentJarId}`, { name:newName });
+    currentJarName = newName;
+    document.getElementById('edit-screen-title').textContent = newName;
+    showToast("Jar renamed! 🫙"); loadMyJars();
+  }
+
+  async function deleteMemory(memId) {
+    if (!confirm("Delete this memory forever?")) return;
+    await sbDelete('memories', `id=eq.${memId}`);
+    document.getElementById(`mem-${memId}`)?.remove();
+    showToast("Memory removed 🌌");
+  }
+
+  async function confirmDeleteJar() {
+    if (!confirm(`Delete "${currentJarName}" and all its memories forever?`)) return;
+    await sbDelete('memories', `jar_id=eq.${currentJarId}`);
+    await sbDelete('jars', `id=eq.${currentJarId}`);
+    currentJarId=null; currentJarName=null;
+    history.pushState({},'',' ');
+    showToast("Jar deleted 🌌"); initHome();
+  }
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.search-bar')&&!e.target.closest('.search-results'))
+      document.getElementById('search-results').style.display='none';
+  });
+
+  // ---- INIT ----
+  window.addEventListener('load', async () => {
+    const loader = document.getElementById('loading-screen');
+    const hide = () => { loader.classList.add('hide'); setTimeout(()=>loader.remove(),400); };
+
+    try {
+      const stored = localStorage.getItem('mj_session');
+      if (stored) {
+        const session = JSON.parse(stored);
+        const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+          method:"POST",
+          headers:{"apikey":SUPABASE_KEY,"Content-Type":"application/json"},
+          body:JSON.stringify({refresh_token:session.refresh_token})
+        });
+        const data = await res.json();
+        if (data.access_token) {
+          const name = data.user?.user_metadata?.name || session.name || 'you';
+          setSession(data, name);
+          hide(); initHome(); return;
+        }
+        localStorage.removeItem('mj_session');
+      }
+    } catch(e) { localStorage.removeItem('mj_session'); }
+
+    hide(); showScreen('auth-screen');
+  });
+</script>
+</body>
+</html>
