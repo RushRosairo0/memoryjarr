@@ -412,14 +412,16 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
     btn.disabled = true; btn.textContent = 'Signing in...';
 
     const data = await authReq('/token?grant_type=password', { email, password });
+
     btn.disabled = false; btn.textContent = 'Sign in ✨';
 
     if (data.error||data.error_description) { showMsg('login', data.error_description||data.error||'Invalid email or password.'); return; }
 
     const name = data.user?.user_metadata?.name || email.split('@')[0];
+    currentUser = { ...data.user, access_token: data.access_token, name };
     setSession(data, name);
     initHome();
-  }
+}
 
   async function logout() {
     await sbFetch('/auth/v1/logout', { method:"POST" });
